@@ -1,9 +1,9 @@
-name: Promote Dev to Main
+name: Promote Develop to Main
 
 on:
   push:
     branches:
-      - dev
+      - develop
 
 jobs:
   promote:
@@ -13,12 +13,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Merge dev into main
+      - name: Merge develop into main
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
           git fetch origin
           git checkout main
-          git merge origin/dev --no-edit
+          git merge origin/develop --no-edit
           git push origin main
