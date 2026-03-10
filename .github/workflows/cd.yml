@@ -16,6 +16,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+          
       - name: Merge develop into main
         run: |
           git config user.name "github-actions"
