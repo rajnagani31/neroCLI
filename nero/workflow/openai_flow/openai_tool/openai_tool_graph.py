@@ -12,31 +12,44 @@ from typing import Annotated, TypedDict, Literal
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage, BaseMessage
-from openai_tools import get_current_weather  # Your @tool
+from openai_tools import * # Your @tool
 from openai_adapter.openai_llm_service import OpenAILLMService
 
 class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 # 👈 CRITICAL: Bind tools to LLM FIRST
-tools = [get_current_weather]
+tools = [
+    get_current_weather,
+    two_sum,
+    apply_command,
+    list_directory,
+    create_directory,
+    read_file,
+    ]  # List of your tools
 llm = OpenAILLMService().bind_tools(tools)  # This sets up tool callingAIMessage
+
+# llm = OpenAILLMService()
 
 def agent_response(state: State):
     """Agent: LLM decides which tools to call"""
     print("🧠 1. Agent is generating response...")
+    \
     messages = state["messages"]
-    print("Current conversation messages:", messages)
 
     if messages[-1].content.lower() in ['hi', 'hello','HI','Hello','hi, thier']:
         return {"messages": [AIMessage(content="Hello! How can I assist you today?!!")]}
-    response = llm.invoke(messages)  # Now works!
-    print("Agent response:", response)
+    
+    response = llm.invoke(messages)  
+    print("LLM response:", response)  # Debug print to see the raw response from LLM
+    # response = llm.generate_response(messages[-1].content, "You are a helpful assistant.", tools)  # Now works!
+
     return {"messages": [response]}
 
 def execute_tools(state: State):
     """Execute the tool calls from agent"""
     print("🔧 3. Executing tools called by agent...")
+
     last_message = state['messages'][-1]
     if not isinstance(last_message, AIMessage) or not last_message.tool_calls:
         return state
@@ -60,7 +73,7 @@ def execute_tools(state: State):
     
     return {"messages": tool_messages}
 
-def should_continue(state: State) -> Literal["tools", END]:
+def should_continue(state: State) -> Literal["tools", END]: # type: ignore
     last_message = state['messages'][-1]
     print("🔍 2. Checking if agent called tools...")
     if isinstance(last_message, AIMessage) and last_message.tool_calls:
@@ -89,7 +102,12 @@ graph.add_edge("tools", "agent_response")  # Loop back to agent after tools
 app = graph.compile()
 
 if __name__ == "__main__":
-    result = app.invoke({
-        "messages": [HumanMessage(content="HI")],
-    })
-    print("Final response:", result["messages"][-1].content)
+    while True:
+        input_text = input("You: ")
+        if input_text.lower() in ['exit', 'quit']:
+            print("Exiting...")
+            break
+        result = app.invoke({
+            "messages": [HumanMessage(content=input_text)],
+        })
+        print("Final response:", result["messages"][-1].content)
