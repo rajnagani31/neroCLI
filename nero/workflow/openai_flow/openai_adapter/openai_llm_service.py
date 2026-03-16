@@ -25,7 +25,7 @@ except Exception:
         from openai_tool.openai_tools import get_current_weather
 
 load_dotenv()
-tools = [get_current_weather]
+
 class OpenAILLMService:
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
@@ -39,8 +39,8 @@ class OpenAILLMService:
         """Bind tools to the model (CRITICAL for tool calling)"""
         self._chat_model = ChatOpenAI(
             model=self.model,
+            streaming=True,
         ).bind_tools(tools)
-        print("result of bind_tools", self._chat_model)
         return self  # Return self for chaining
 
     def invoke(self, messages: list[BaseMessage]):
@@ -63,7 +63,26 @@ class OpenAILLMService:
         msgs = list(messages) if not isinstance(messages, list) else messages
         # system_message = SystemMessage(content=str(SYSTEM_PROMPT))
         # msgs = messages
-        return self._chat_model.invoke([system_message] + msgs)
+        return self._chat_model.ainvoke([system_message] + msgs)
+
+    def stream_invoke(self, messages: list[BaseMessage]):
+        """Attempt to stream responses from the underlying chat model.
+
+        Yields chunks (either BaseMessage instances or strings). Falls back
+        to single-shot `invoke` if streaming is not supported.
+        """
+        if not self._chat_model:
+            raise ValueError("Must call bind_tools() first")
+
+        stream_fn = getattr(self._chat_model, "stream_invoke", None)
+        if callable(stream_fn):
+            for chunk in stream_fn(messages):
+                yield chunk
+            return
+
+        # Fallback: single-shot invoke and yield the full response once
+        resp = self.invoke(messages)
+        yield resp
 
     def get_system_prompt(self):
         with open("prompts/system_prompt.md") as f:

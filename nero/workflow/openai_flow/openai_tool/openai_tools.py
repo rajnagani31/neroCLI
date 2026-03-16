@@ -92,4 +92,12 @@ def read_file(path: str):
 def two_sum(a: int, b: int) -> int:
     """Return the sum of two numbers"""
     return a + b
+
+@tool
+def update_file_data(path: str, new_content: str):
+    """Update file content."""
+    print(f"🔨 Tool Called: update_file_data with path '{path}'")
+    with open(path, "w") as f:
+        f.write(new_content)
+    return f"File updated: {path}"
 # apply_command("python3 openai_tool/openai_tool_graph.py")
